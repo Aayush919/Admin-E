@@ -26,8 +26,10 @@ export interface Category {
 }
 
 export interface ProductVariant {
-  size: string;
+  size: string | number;
   price: number;
+  priceAfterDiscount?: number;
+  discountPercentage?: number;
   stock: number;
 }
 
@@ -41,13 +43,15 @@ export interface Product {
   _id: string;
   name: string;
   description?: string;
-  basePrice: number;
+  basePrice?: number;
   priceAfterDiscount?: number;
   discountPercent?: number;
   category: Category | string;
   productType: 'clothes' | 'book' | 'other';
   stock: number;
   variants?: ProductVariant[];
+  sizeVariants?: ProductVariant[];
+  selectedSizeVariant?: ProductVariant;
   attachments?: ProductImage[];
 }
 

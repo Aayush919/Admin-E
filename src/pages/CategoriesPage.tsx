@@ -125,11 +125,13 @@ export function CategoriesPage() {
     if (!file) return;
 
     try {
-      const uploaded = await uploadTempMedia(file);
+      const uploaded:any = await uploadTempMedia(file);
+    
+      
       setUploadedImage({
-        key: uploaded.key,
-        originalName: uploaded.originalName ?? file.name,
-        url: uploaded.url,
+        key: uploaded.data.file.key,
+        originalName: uploaded.data.file.originalName ?? file.name,
+        url: uploaded.data.file.url,
       });
       toast.success('Image uploaded');
     } catch (error) {
@@ -138,6 +140,7 @@ export function CategoriesPage() {
   };
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    console.log(uploadedImage,'check for this here>>')
     const payload = {
       name: values.name,
       description: values.description?.trim() || undefined,

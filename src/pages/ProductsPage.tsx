@@ -10,27 +10,32 @@ import {
   deleteProduct,
   fetchCategories,
   fetchProducts,
+  getProductDetails,
   updateProduct,
   uploadTempMedia,
 } from '../api/endpoints';
 import type { Category, Product } from '../types';
 
-const variantSchema = z.object({
-  size: z.string().min(1, 'Size is required'),
-  price: z.coerce.number().nonnegative('Variant price must be zero or greater'),
-  stock: z.coerce.number().int().nonnegative('Variant stock must be zero or greater'),
+const sizeVariantSchema = z.object({
+  size: z.union([z.string(), z.number()]),
+  price: z.coerce.number().min(0, 'Price must be zero or greater'),
+  priceAfterDiscount: z.coerce.number().min(0).optional(),
+  discountPercentage: z.coerce.number().min(0).max(100).optional(),
+  stock: z.coerce.number().int().min(0, 'Stock must be zero or greater'),
 });
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  basePrice: z.coerce.number().nonnegative('Base price must be zero or greater'),
-  priceAfterDiscount: z.coerce.number().nonnegative().optional().or(z.literal('')),
-  discountPercent: z.coerce.number().min(0).max(100).optional().or(z.literal('')),
-  category: z.string().min(1, 'Category is required'),
   productType: z.enum(['clothes', 'book', 'other']),
-  stock: z.coerce.number().int().nonnegative('Stock must be zero or greater'),
-  variants: z.array(variantSchema),
+  category: z.string().min(1, 'Category is required'),
+  // For clothes with variants
+  sizeVariants: z.array(sizeVariantSchema).optional(),
+  // For book/other with fixed price
+  price: z.coerce.number().min(0, 'Price must be zero or greater').optional(),
+  priceAfterDiscount: z.coerce.number().min(0).optional(),
+  discountPercentage: z.coerce.number().min(0).max(100).optional(),
+  stock: z.coerce.number().int().min(0, 'Stock must be zero or greater').optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -39,6 +44,7 @@ type ModalMode = {
   product?: Product;
 };
 type UploadedImage = {
+  file?: File;
   key: string;
   originalName: string;
   url?: string;
@@ -64,22 +70,26 @@ export function ProductsPage() {
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       description: '',
-      basePrice: 0,
-      priceAfterDiscount: '',
-      discountPercent: '',
-      category: '',
       productType: 'other',
+      category: '',
+      sizeVariants: [],
+      price: 0,
+      priceAfterDiscount: undefined,
+      discountPercentage: undefined,
       stock: 0,
-      variants: [],
     },
   });
 
-  const variants = useFieldArray({
+  const productType = form.watch('productType');
+  const hasVariants = form.watch('sizeVariants');
+
+  const sizeVariants = useFieldArray({
     control: form.control,
-    name: 'variants',
+    name: 'sizeVariants',
   });
 
   useEffect(() => {
@@ -87,35 +97,45 @@ export function ProductsPage() {
       form.reset({
         name: '',
         description: '',
-        basePrice: 0,
-        priceAfterDiscount: '',
-        discountPercent: '',
-        category: '',
         productType: 'other',
+        category: '',
+        sizeVariants: [],
+        price: 0,
+        priceAfterDiscount: undefined,
+        discountPercentage: undefined,
         stock: 0,
-        variants: [],
       });
-      variants.replace([]);
+      sizeVariants.replace([]);
       setUploadedImages([]);
       return;
     }
 
     if (modal.mode === 'edit' && modal.product) {
       const categoryId =
-        typeof modal.product.category === 'string' ? modal.product.category : modal.product.category?._id ?? '';
+        typeof modal.product.category === 'string'
+          ? modal.product.category
+          : modal.product.category?._id ?? '';
+
+      const sizeVariantsData = (modal.product.sizeVariants ?? modal.product.variants ?? []).map((v) => ({
+        size: v.size,
+        price: v.price,
+        priceAfterDiscount: v.priceAfterDiscount,
+        discountPercentage: v.discountPercentage,
+        stock: v.stock,
+      }));
 
       form.reset({
         name: modal.product.name ?? '',
         description: modal.product.description ?? '',
-        basePrice: modal.product.basePrice ?? 0,
-        priceAfterDiscount: modal.product.priceAfterDiscount ?? '',
-        discountPercent: modal.product.discountPercent ?? '',
-        category: categoryId,
         productType: modal.product.productType ?? 'other',
+        category: categoryId,
+        sizeVariants: sizeVariantsData as any,
+        price: modal.product.basePrice ?? modal.product.priceAfterDiscount ?? 0,
+        priceAfterDiscount: modal.product.priceAfterDiscount,
+        discountPercentage: modal.product.discountPercent,
         stock: modal.product.stock ?? 0,
-        variants: modal.product.variants ?? [],
       });
-      variants.replace(modal.product.variants ?? []);
+      sizeVariants.replace(sizeVariantsData as any);
       setUploadedImages(
         (modal.product.attachments ?? []).map((image) => ({
           key: image.key,
@@ -127,18 +147,18 @@ export function ProductsPage() {
       form.reset({
         name: '',
         description: '',
-        basePrice: 0,
-        priceAfterDiscount: '',
-        discountPercent: '',
-        category: '',
         productType: 'other',
+        category: '',
+        sizeVariants: [],
+        price: 0,
+        priceAfterDiscount: undefined,
+        discountPercentage: undefined,
         stock: 0,
-        variants: [],
       });
-      variants.replace([]);
+      sizeVariants.replace([]);
       setUploadedImages([]);
     }
-  }, [form, modal, variants]);
+  }, [modal?.mode, modal?.product?._id]);
 
   const createMutation = useMutation({
     mutationFn: createProduct,
@@ -151,7 +171,7 @@ export function ProductsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateProduct>[1] }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Parameters<typeof updateProduct>[1]> }) =>
       updateProduct(id, payload),
     onSuccess: async () => {
       toast.success('Product updated');
@@ -188,11 +208,11 @@ export function ProductsPage() {
     if (!files || files.length === 0) return;
 
     try {
-      const uploads = await Promise.all(Array.from(files).map((file) => uploadTempMedia(file)));
-      const mapped = uploads.map((uploaded, index) => ({
-        key: uploaded.key,
-        originalName: uploaded.originalName ?? files[index]?.name ?? uploaded.key,
-        url: uploaded.url,
+      const uploads:any= await Promise.all(Array.from(files).map((file) => uploadTempMedia(file)));
+      const mapped = uploads.map((uploaded:any, index:number) => ({
+        key: uploaded.data.file.key,
+        originalName: uploaded.data.file.originalName ?? files[index]?.name ?? uploaded.key,
+        url: uploaded.data.file.url,
       }));
       setUploadedImages((current) => [...current, ...mapped]);
       toast.success('Image(s) uploaded');
@@ -202,40 +222,43 @@ export function ProductsPage() {
   };
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    if (modal?.mode === 'create' && uploadedImages.length === 0) {
-      toast.error('Please upload at least one product image before creating');
+    if (uploadedImages.length === 0) {
+      toast.error('Please upload at least one product image');
       return;
     }
 
-    const payload = {
+    if (productType === 'clothes' && (!values.sizeVariants || values.sizeVariants.length === 0)) {
+      toast.error('Please add at least one size variant for clothes');
+      return;
+    }
+
+    if (productType !== 'clothes' && !values.price) {
+      toast.error('Please set a price for this product');
+      return;
+    }
+
+    const payload: any = {
       name: values.name,
-      description: values.description?.trim() || undefined,
-      basePrice: Number(values.basePrice),
-      priceAfterDiscount:
-        values.priceAfterDiscount === '' || values.priceAfterDiscount === undefined
-          ? undefined
-          : Number(values.priceAfterDiscount),
-      discountPercent:
-        values.discountPercent === '' || values.discountPercent === undefined
-          ? undefined
-          : Number(values.discountPercent),
-      category: values.category,
       productType: values.productType,
-      stock: Number(values.stock),
-      variants: values.variants.length ? values.variants.map((variant) => ({
-        size: variant.size,
-        price: Number(variant.price),
-        stock: Number(variant.stock),
-      })) : undefined,
-      ...(uploadedImages.length
-        ? {
-            attachments: uploadedImages.map((image) => ({
-              key: image.key,
-              originalName: image.originalName,
-            })),
-          }
-        : {}),
+      category: values.category,
+      attachments: uploadedImages.map((img) => ({
+        key: img.key,
+        originalName: img.originalName,
+      })),
     };
+
+    if (values.description?.trim()) {
+      payload.description = values.description.trim();
+    }
+
+    if (productType === 'clothes' && values.sizeVariants && values.sizeVariants.length > 0) {
+      payload.sizeVariants = values.sizeVariants;
+    } else {
+      if (values.price) payload.price = values.price;
+      if (values.priceAfterDiscount) payload.priceAfterDiscount = values.priceAfterDiscount;
+      if (values.discountPercentage) payload.discountPercentage = values.discountPercentage;
+      if (values.stock) payload.stock = values.stock;
+    }
 
     if (modal?.mode === 'edit' && modal.product) {
       updateMutation.mutate({ id: modal.product._id, payload });
@@ -277,6 +300,7 @@ export function ProductsPage() {
                 <tr>
                   <Th>Image</Th>
                   <Th>Name</Th>
+                  <Th>Type</Th>
                   <Th>Category</Th>
                   <Th>Price</Th>
                   <Th>Stock</Th>
@@ -290,6 +314,7 @@ export function ProductsPage() {
                       ? categories.find((category) => category._id === product.category)?.name ?? product.category
                       : product.category?.name ?? 'No category';
                   const image = product.attachments?.[0];
+                  const price = product.priceAfterDiscount ?? product.basePrice ?? 'N/A';
 
                   return (
                     <tr key={product._id} className="hover:bg-slate-50/80">
@@ -319,12 +344,17 @@ export function ProductsPage() {
                         </div>
                       </Td>
                       <Td>
+                        <div className="inline-block rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 capitalize">
+                          {product.productType}
+                        </div>
+                      </Td>
+                      <Td>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
                           {categoryName}
                         </span>
                       </Td>
                       <Td>
-                        <div className="text-slate-900">â‚¹{product.priceAfterDiscount ?? product.basePrice}</div>
+                        <div className="text-slate-900">₹{price}</div>
                         {product.discountPercent ? (
                           <div className="text-xs text-slate-500">{product.discountPercent}% off</div>
                         ) : null}
@@ -367,11 +397,11 @@ export function ProductsPage() {
         >
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Name" error={form.formState.errors.name?.message}>
+              <Field label="Product Name" error={form.formState.errors.name?.message}>
                 <input
                   {...form.register('name')}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="Product name"
+                  placeholder="Cotton T-Shirt"
                 />
               </Field>
 
@@ -394,123 +424,170 @@ export function ProductsPage() {
                   {...form.register('productType')}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500"
                 >
-                  <option value="clothes">Clothes</option>
+                  <option value="clothes">Clothes (with sizes)</option>
                   <option value="book">Book</option>
                   <option value="other">Other</option>
                 </select>
-              </Field>
-
-              <Field label="Stock" error={form.formState.errors.stock?.message}>
-                <input
-                  {...form.register('stock')}
-                  type="number"
-                  min={0}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="0"
-                />
-              </Field>
-
-              <Field label="Base Price" error={form.formState.errors.basePrice?.message}>
-                <input
-                  {...form.register('basePrice')}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </Field>
-
-              <Field label="Price After Discount" error={form.formState.errors.priceAfterDiscount?.message}>
-                <input
-                  {...form.register('priceAfterDiscount')}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </Field>
-
-              <Field label="Discount %" error={form.formState.errors.discountPercent?.message}>
-                <input
-                  {...form.register('discountPercent')}
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.01"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="0"
-                />
               </Field>
             </div>
 
             <Field label="Description" error={form.formState.errors.description?.message}>
               <textarea
                 {...form.register('description')}
-                rows={4}
+                rows={3}
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
                 placeholder="Product description"
               />
             </Field>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Variants</h3>
-                  <p className="text-xs text-slate-500">Optional size-based pricing and stock.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => variants.append({ size: '', price: 0, stock: 0 })}
-                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
-                >
-                  Add Variant
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {variants.fields.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-                    No variants added.
+            {productType === 'clothes' ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Size Variants</h3>
+                    <p className="text-xs text-slate-500">Add sizes with price and stock for each variant.</p>
                   </div>
-                ) : (
-                  variants.fields.map((field, index) => (
-                    <div key={field.id} className="grid gap-3 md:grid-cols-4">
-                      <input
-                        {...form.register(`variants.${index}.size` as const)}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500"
-                        placeholder="Size"
-                      />
-                      <input
-                        {...form.register(`variants.${index}.price` as const)}
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500"
-                        placeholder="Price"
-                      />
-                      <input
-                        {...form.register(`variants.${index}.stock` as const)}
-                        type="number"
-                        min={0}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500"
-                        placeholder="Stock"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => variants.remove(index)}
-                        className="rounded-xl border border-red-200 px-4 py-3 font-medium text-red-600 transition hover:bg-red-50"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      sizeVariants.append({
+                        size: '',
+                        price: 0,
+                        stock: 0,
+                      })
+                    }
+                    className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                  >
+                    + Add Variant
+                  </button>
+                </div>
 
-            <Field label="Images">
+                <div className="space-y-3">
+                  {sizeVariants.fields.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                      No size variants added.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {sizeVariants.fields.map((field, index) => (
+                        <div key={field.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="grid gap-3 md:grid-cols-6">
+                            <div>
+                              <label className="text-xs font-medium text-slate-700">Size</label>
+                              <input
+                                {...form.register(`sizeVariants.${index}.size` as const)}
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                                placeholder="XS, S, M, L..."
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-700">Price</label>
+                              <input
+                                {...form.register(`sizeVariants.${index}.price` as const)}
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-700">After Discount</label>
+                              <input
+                                {...form.register(`sizeVariants.${index}.priceAfterDiscount` as const)}
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-700">Discount %</label>
+                              <input
+                                {...form.register(`sizeVariants.${index}.discountPercentage` as const)}
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-700">Stock</label>
+                              <input
+                                {...form.register(`sizeVariants.${index}.stock` as const)}
+                                type="number"
+                                min={0}
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <button
+                                type="button"
+                                onClick={() => sizeVariants.remove(index)}
+                                className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Price" error={form.formState.errors.price?.message}>
+                  <input
+                    {...form.register('price')}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+                    placeholder="0.00"
+                  />
+                </Field>
+
+                <Field label="Price After Discount" error={form.formState.errors.priceAfterDiscount?.message}>
+                  <input
+                    {...form.register('priceAfterDiscount')}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+                    placeholder="0.00"
+                  />
+                </Field>
+
+                <Field label="Discount %" error={form.formState.errors.discountPercentage?.message}>
+                  <input
+                    {...form.register('discountPercentage')}
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+                    placeholder="0"
+                  />
+                </Field>
+
+                <Field label="Stock" error={form.formState.errors.stock?.message}>
+                  <input
+                    {...form.register('stock')}
+                    type="number"
+                    min={0}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+                    placeholder="0"
+                  />
+                </Field>
+              </div>
+            )}
+
+            <Field label="Product Images">
               <div className="space-y-3">
                 <input
                   type="file"
@@ -541,7 +618,7 @@ export function ProductsPage() {
                           )}
                           <div>
                             <div className="text-sm font-medium text-slate-900">{image.originalName}</div>
-                            <div className="text-xs text-slate-500">Uploaded key: {image.key}</div>
+                            <div className="text-xs text-slate-500">Key: {image.key}</div>
                           </div>
                         </div>
                         <button

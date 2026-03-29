@@ -25,14 +25,23 @@ export interface CategoryPayload {
 export interface ProductPayload {
   name: string;
   description?: string;
-  basePrice: number;
+  price?: number;
   priceAfterDiscount?: number;
-  discountPercent?: number;
+  discountPercentage?: number;
   category: string;
   productType: 'clothes' | 'book' | 'other';
-  stock: number;
-  variants?: { size: string; price: number; stock: number }[];
-  attachments?: { key: string; originalName: string }[];
+  stock?: number;
+  sizeVariants?: Array<{
+    size: string | number;
+    price: number;
+    priceAfterDiscount?: number;
+    discountPercentage?: number;
+    stock: number;
+  }>;
+  attachments?: Array<{
+    key: string;
+    originalName: string;
+  }>;
 }
 
 export async function login(payload: LoginPayload) {
@@ -65,14 +74,31 @@ export async function fetchProducts() {
   return normalizeProductArray(data);
 }
 
+export async function getProductDetails(productId: string, size?: string | number) {
+  const { data } = await apiClient.get<unknown>(
+    `/api/products/${productId}${size ? `?size=${size}` : ''}`
+  );
+  return normalizeProduct(data);
+}
+
+export async function searchProducts(query: string) {
+  const { data } = await apiClient.get<unknown>(`/api/products/search?q=${query}`);
+  return normalizeProductArray(data);
+}
+
+export async function getProductsByCategory(categoryId: string) {
+  const { data } = await apiClient.get<unknown>(`/api/products/category/${categoryId}`);
+  return normalizeProductArray(data);
+}
+
 export async function createProduct(payload: ProductPayload) {
-  const { data } = await apiClient.post<Product>('/api/products', payload);
-  return data;
+  const { data } = await apiClient.post<unknown>('/api/products', payload);
+  return normalizeProduct(data);
 }
 
 export async function updateProduct(id: string, payload: Partial<ProductPayload>) {
-  const { data } = await apiClient.patch<Product>(`/api/products/${id}`, payload);
-  return data;
+  const { data } = await apiClient.patch<unknown>(`/api/products/${id}`, payload);
+  return normalizeProduct(data);
 }
 
 export async function deleteProduct(id: string) {
@@ -112,6 +138,22 @@ function normalizeCategoryArray(payload: unknown): Category[] {
 
 function normalizeProductArray(payload: unknown): Product[] {
   return normalizeArray<Product>(payload, ['products', 'data', 'result']);
+}
+
+function normalizeProduct(payload: unknown): Product {
+  if (payload && typeof payload === 'object') {
+    const keys = ['product', 'data'];
+    for (const key of keys) {
+      const value = (payload as Record<string, unknown>)[key];
+      if (value && typeof value === 'object' && 'name' in value) {
+        return value as Product;
+      }
+    }
+    if ('name' in payload) {
+      return payload as Product;
+    }
+  }
+  return {} as Product;
 }
 
 function normalizeArray<T>(payload: unknown, keys: string[]): T[] {
