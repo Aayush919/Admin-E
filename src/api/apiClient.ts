@@ -1,7 +1,8 @@
 import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
-import { getSiteTag, getToken, clearSession } from '../lib/storage';
+import { clearSession, getSiteTag, getToken } from '../lib/storage';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
+const baseURL = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? env.REACT_APP_API_URL ?? 'http://localhost:3000';
 
 export const apiClient = axios.create({
   baseURL,
@@ -11,6 +12,11 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getToken();
   const siteTag = getSiteTag();
+  const bodySiteTag =
+    config.data && typeof config.data === 'object' && 'siteTag' in config.data
+      ? (config.data as { siteTag?: unknown }).siteTag
+      : undefined;
+  const requestSiteTag = siteTag ?? (typeof bodySiteTag === 'string' ? bodySiteTag : undefined);
 
   config.headers = AxiosHeaders.from(config.headers);
 
@@ -18,9 +24,8 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const isAuthRoute = typeof config.url === 'string' && config.url.includes('/api/auth/');
-  if (siteTag && !isAuthRoute) {
-    config.headers.set('x-site-tag', siteTag);
+  if (requestSiteTag) {
+    config.headers.set('X-Site-Tag', requestSiteTag);
   }
 
   return config;

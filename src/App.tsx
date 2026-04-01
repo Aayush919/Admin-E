@@ -4,7 +4,8 @@ import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CategoriesPage } from './pages/CategoriesPage';
-import { ProductsPage } from './pages/ProductsPage';
+import { ProductsPage } from './pages/admin/ProductsPage';
+import { FeaturedProductsPage } from './pages/admin/FeaturedProductsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { SettingsPage } from './pages/SettingsPage';
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/featured" element={<FeaturedProductsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

@@ -1,15 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { LayoutDashboard, Package, Settings, Shapes, ShoppingCart, LogOut } from 'lucide-react';
+import { LayoutDashboard, LogOut, Package, Settings, Shapes, ShoppingCart, Star } from 'lucide-react';
 import { useAuth } from '../../providers/AuthProvider';
 import { cn } from '../../lib/utils';
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/categories', label: 'Categories', icon: Shapes },
-  { to: '/orders', label: 'Orders', icon: ShoppingCart },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/products', label: 'Products', icon: Package, end: true },
+  { to: '/products/featured', label: 'Featured', icon: Star, end: true },
+  { to: '/categories', label: 'Categories', icon: Shapes, end: true },
+  { to: '/orders', label: 'Orders', icon: ShoppingCart, end: true },
+  { to: '/settings', label: 'Settings', icon: Settings, end: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition',

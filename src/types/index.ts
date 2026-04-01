@@ -43,16 +43,22 @@ export interface Product {
   _id: string;
   name: string;
   description?: string;
-  basePrice?: number;
+  siteTag?: string;
+  price?: number;
   priceAfterDiscount?: number;
+  discountPercentage?: number;
+  basePrice?: number;
   discountPercent?: number;
   category: Category | string;
   productType: 'clothes' | 'book' | 'other';
-  stock: number;
+  stock?: number;
+  size?: string | number;
   variants?: ProductVariant[];
   sizeVariants?: ProductVariant[];
   selectedSizeVariant?: ProductVariant;
   attachments?: ProductImage[];
+  isFeatured?: boolean;
+  featuredAt?: string | null;
 }
 
 export interface Order {
