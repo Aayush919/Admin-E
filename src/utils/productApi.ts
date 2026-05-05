@@ -1,5 +1,5 @@
 import { apiClient } from '../api/apiClient';
-import type { Product } from '../types';
+import type { Product, ProductPayload } from '../types';
 
 export type ProductTypeFilter = Product['productType'] | 'all';
 
@@ -42,8 +42,8 @@ export async function getProductById(id: string, siteTag: string) {
   return normalizeProduct(data);
 }
 
-export async function createProduct(formData: FormData, siteTag: string, token: string) {
-  const { data } = await apiClient.post<unknown>('/api/products', formData, {
+export async function createProduct(payload: ProductPayload, siteTag: string, token: string) {
+  const { data } = await apiClient.post<unknown>('/api/products', payload, {
     headers: {
       'X-Site-Tag': siteTag,
       Authorization: `Bearer ${token}`,
@@ -53,8 +53,8 @@ export async function createProduct(formData: FormData, siteTag: string, token: 
   return normalizeProduct(data);
 }
 
-export async function updateProduct(id: string, formData: FormData, siteTag: string, token: string) {
-  const { data } = await apiClient.patch<unknown>(`/api/products/${id}`, formData, {
+export async function updateProduct(id: string, payload: ProductPayload, siteTag: string, token: string) {
+  const { data } = await apiClient.patch<unknown>(`/api/products/${id}`, payload, {
     headers: {
       'X-Site-Tag': siteTag,
       Authorization: `Bearer ${token}`,

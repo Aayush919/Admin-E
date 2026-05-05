@@ -4,7 +4,7 @@ import { Filter, Plus, Search, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCategories } from '../../api/endpoints';
 import { useAuth } from '../../providers/AuthProvider';
-import type { Category, Product } from '../../types';
+import type { Category, Product, ProductPayload } from '../../types';
 import {
   createProduct,
   deleteProduct,
@@ -161,11 +161,11 @@ export function ProductManagementPanel({ scope }: ProductManagementPanelProps) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
+    mutationFn: async (payload: ProductPayload) => {
       if (!siteTag || !token) {
         throw new Error('Missing admin credentials');
       }
-      return createProduct(formData, siteTag, token);
+      return createProduct(payload, siteTag, token);
     },
     onSuccess: async () => {
       toast.success('Product created');
@@ -177,11 +177,11 @@ export function ProductManagementPanel({ scope }: ProductManagementPanelProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ productId, formData }: { productId: string; formData: FormData }) => {
+    mutationFn: async ({ productId, payload }: { productId: string; payload: ProductPayload }) => {
       if (!siteTag || !token) {
         throw new Error('Missing admin credentials');
       }
-      return updateProduct(productId, formData, siteTag, token);
+      return updateProduct(productId, payload, siteTag, token);
     },
     onSuccess: async () => {
       toast.success('Product updated');
@@ -248,13 +248,13 @@ export function ProductManagementPanel({ scope }: ProductManagementPanelProps) {
     await deleteMutation.mutateAsync(product._id);
   };
 
-  const handleSubmitForm = async (formData: FormData) => {
+  const handleSubmitForm = async (payload: ProductPayload) => {
     if (formState.mode === 'edit' && formState.product) {
-      await updateMutation.mutateAsync({ productId: formState.product._id, formData });
+      await updateMutation.mutateAsync({ productId: formState.product._id, payload });
       return;
     }
 
-    await createMutation.mutateAsync(formData);
+    await createMutation.mutateAsync(payload);
   };
 
   const handleToggleSelectAll = (checked: boolean) => {

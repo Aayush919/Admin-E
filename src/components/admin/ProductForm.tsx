@@ -6,7 +6,7 @@ import { Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { uploadTempMedia } from '../../api/endpoints';
-import type { Category, Product } from '../../types';
+import type { Category, Product, ProductPayload } from '../../types';
 
 const sizeVariantSchema = z.object({
   size: z.union([z.string(), z.number()]),
@@ -44,7 +44,7 @@ interface ProductFormProps {
   product?: Product | null;
   isSubmitting?: boolean;
   onClose: () => void;
-  onSubmit: (formData: FormData) => Promise<void> | void;
+  onSubmit: (payload: ProductPayload) => Promise<void> | void;
 }
 
 export function ProductForm({
@@ -79,12 +79,14 @@ export function ProductForm({
     control: form.control,
     name: 'sizeVariants',
   });
+  const resetForm = form.reset;
+  const replaceSizeVariants = sizeVariants.replace;
 
   const watchedType = form.watch('productType');
 
   useEffect(() => {
     if (!open) {
-      form.reset({
+      resetForm({
         name: '',
         description: '',
         productType: 'other',
@@ -96,7 +98,7 @@ export function ProductForm({
         stock: undefined,
         sizeVariants: [],
       });
-      sizeVariants.replace([]);
+      replaceSizeVariants([]);
       setAttachments([]);
       return;
     }
@@ -110,7 +112,7 @@ export function ProductForm({
         stock: variant.stock,
       }));
 
-      form.reset({
+      resetForm({
         name: product.name ?? '',
         description: product.description ?? '',
         productType: product.productType ?? 'other',
@@ -122,7 +124,7 @@ export function ProductForm({
         stock: product.stock,
         sizeVariants: mappedVariants,
       });
-      sizeVariants.replace(mappedVariants);
+      replaceSizeVariants(mappedVariants);
       setAttachments(
         (product.attachments ?? []).map((attachment) => ({
           key: attachment.key,
@@ -133,7 +135,7 @@ export function ProductForm({
       return;
     }
 
-    form.reset({
+    resetForm({
       name: '',
       description: '',
       productType: 'other',
@@ -145,9 +147,9 @@ export function ProductForm({
       stock: undefined,
       sizeVariants: [],
     });
-    sizeVariants.replace([]);
+    replaceSizeVariants([]);
     setAttachments([]);
-  }, [form, mode, open, product, sizeVariants]);
+  }, [mode, open, product?._id, replaceSizeVariants, resetForm]);
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -183,42 +185,38 @@ export function ProductForm({
       return;
     }
 
-    const formData = new FormData();
-    formData.append('name', values.name.trim());
+    const payload: ProductPayload = {
+      name: values.name.trim(),
+      category: values.category,
+      productType: values.productType,
+      attachments: attachments.map((attachment) => ({
+        key: attachment.key,
+        originalName: attachment.originalName,
+      })),
+    };
+
     if (values.description?.trim()) {
-      formData.append('description', values.description.trim());
+      payload.description = values.description.trim();
     }
-    formData.append('productType', values.productType);
-    formData.append('category', values.category);
 
     if (values.size?.trim()) {
-      formData.append('size', values.size.trim());
+      payload.size = values.size.trim();
     }
 
     if (values.productType === 'clothes') {
-      formData.append('sizeVariants', JSON.stringify(values.sizeVariants ?? []));
+      payload.sizeVariants = values.sizeVariants ?? [];
     } else {
-      if (values.price != null) formData.append('price', String(values.price));
+      if (values.price != null) payload.price = values.price;
       if (values.priceAfterDiscount != null) {
-        formData.append('priceAfterDiscount', String(values.priceAfterDiscount));
+        payload.priceAfterDiscount = values.priceAfterDiscount;
       }
       if (values.discountPercentage != null) {
-        formData.append('discountPercentage', String(values.discountPercentage));
+        payload.discountPercentage = values.discountPercentage;
       }
-      if (values.stock != null) formData.append('stock', String(values.stock));
+      if (values.stock != null) payload.stock = values.stock;
     }
 
-    formData.append(
-      'attachments',
-      JSON.stringify(
-        attachments.map((attachment) => ({
-          key: attachment.key,
-          originalName: attachment.originalName,
-        })),
-      ),
-    );
-
-    await onSubmit(formData);
+    await onSubmit(payload);
   });
 
   if (!open) {

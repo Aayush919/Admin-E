@@ -39,6 +39,23 @@ export interface ProductImage {
   url?: string;
 }
 
+export interface ProductPayload {
+  name: string;
+  description?: string;
+  category: string;
+  productType: 'clothes' | 'book' | 'other';
+  size?: string;
+  price?: number;
+  priceAfterDiscount?: number;
+  discountPercentage?: number;
+  stock?: number;
+  sizeVariants?: ProductVariant[];
+  attachments: Array<{
+    key: string;
+    originalName: string;
+  }>;
+}
+
 export interface Product {
   _id: string;
   name: string;
