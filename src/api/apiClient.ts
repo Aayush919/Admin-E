@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axi
 import { clearSession, getSiteTag, getToken } from '../lib/storage';
 
 const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
-const baseURL = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? env.REACT_APP_API_URL ?? 'http://localhost:8081';
+const baseURL = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? env.REACT_APP_API_URL ?? 'https://thakurjishringar.com/api';
 
 export const apiClient = axios.create({
   baseURL,
