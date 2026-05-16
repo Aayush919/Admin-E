@@ -90,3 +90,52 @@ export interface ApiErrorResponse {
   status: 'error';
   message: string;
 }
+
+export type CouponDiscountType = 'percentage' | 'fixed';
+
+export interface AllowedUser {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+export interface Coupon {
+  _id: string;
+  code: string;
+  siteTag?: string;
+  description?: string;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  minPurchase: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usageLimitPerUser?: number;
+  allowedUsers?: AllowedUser[];
+  usedCount: number;
+  isActive: boolean;
+  validFrom?: string;
+  validUntil?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCouponPayload {
+  code: string;
+  description?: string;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usageLimitPerUser?: number;
+  allowedUsers?: string[];
+  isActive?: boolean;
+  validFrom?: string;
+  validUntil?: string;
+}
+
+export interface CustomerOption {
+  _id: string;
+  name: string;
+  email: string;
+}

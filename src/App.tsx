@@ -7,6 +7,7 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { ProductsPage } from './pages/admin/ProductsPage';
 import { FeaturedProductsPage } from './pages/admin/FeaturedProductsPage';
 import { OrdersPage } from './pages/OrdersPage';
+import { CouponsPage } from './pages/CouponsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 function ShellLayout() {
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/featured" element={<FeaturedProductsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/coupons" element={<CouponsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

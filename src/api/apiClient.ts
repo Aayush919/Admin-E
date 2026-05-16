@@ -1,8 +1,25 @@
 import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
-import { clearSession, getSiteTag, getToken } from '../lib/storage';
+import { clearSession, getToken, resolveSiteTag } from '../lib/storage';
 
 const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
-const baseURL = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? env.REACT_APP_API_URL ?? 'https://api.thakurjishringar.com';
+const baseURL = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? env.REACT_APP_API_URL ?? 'http://localhost:8081';
+
+type ApiResponseBody = {
+  status?: string;
+  message?: string;
+  error?: string;
+};
+
+function extractMessage(data: ApiResponseBody | undefined): string {
+  if (!data) return 'Request failed';
+  if (typeof data.message === 'string' && data.message) return data.message;
+  if (typeof data.error === 'string' && data.error) return data.error;
+  return 'Request failed';
+}
+
+function isFailureStatus(status?: string): boolean {
+  return status === 'error' || status === 'fail';
+}
 
 export const apiClient = axios.create({
   baseURL,
@@ -11,12 +28,7 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getToken();
-  const siteTag = getSiteTag();
-  const bodySiteTag =
-    config.data && typeof config.data === 'object' && 'siteTag' in config.data
-      ? (config.data as { siteTag?: unknown }).siteTag
-      : undefined;
-  const requestSiteTag = siteTag ?? (typeof bodySiteTag === 'string' ? bodySiteTag : undefined);
+  const siteTag = resolveSiteTag();
 
   config.headers = AxiosHeaders.from(config.headers);
 
@@ -24,33 +36,35 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers.set('Authorization', `Bearer ${token}`);
   }
 
-  if (requestSiteTag) {
-    config.headers.set('X-Site-Tag', requestSiteTag);
-  }
+  config.headers.set('x-site-tag', siteTag);
 
   return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => {
-    const data = response.data as { status?: string; message?: string } | undefined;
+    const data = response.data as ApiResponseBody | undefined;
 
-    if (data && typeof data === 'object' && data.status === 'error') {
-      const apiError = new Error(data.message || 'Request failed') as Error & {
-        response?: typeof response;
-        isApiError?: boolean;
-      };
-      apiError.response = response;
-      apiError.isApiError = true;
-      return Promise.reject(apiError);
+    if (data && typeof data === 'object' && isFailureStatus(data.status)) {
+      return Promise.reject(new Error(extractMessage(data)));
     }
 
     return response;
   },
-  (error: AxiosError<{ status?: string; message?: string }>) => {
+  (error: AxiosError<ApiResponseBody | string>) => {
     if (error.response?.status === 401) {
       clearSession();
     }
+
+    const data = error.response?.data;
+    if (data && typeof data === 'object') {
+      return Promise.reject(new Error(extractMessage(data)));
+    }
+
+    if (typeof data === 'string' && data) {
+      return Promise.reject(new Error(data));
+    }
+
     return Promise.reject(error);
   },
 );

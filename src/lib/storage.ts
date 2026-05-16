@@ -2,6 +2,18 @@ const TOKEN_KEY = 'admin_e_token';
 const SITE_TAG_KEY = 'admin_e_site_tag';
 const USER_KEY = 'admin_e_user';
 
+const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
+
+/** Default tenant tag for API requests (override with VITE_SITE_TAG). */
+export function getDefaultSiteTag(): string {
+  return env.VITE_SITE_TAG ?? 'w1';
+}
+
+/** Stored login site tag, or env/default — used for every API request header. */
+export function resolveSiteTag(): string {
+  return localStorage.getItem(SITE_TAG_KEY) ?? getDefaultSiteTag();
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }

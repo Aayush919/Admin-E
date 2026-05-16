@@ -1,6 +1,9 @@
 import { apiClient } from './apiClient';
 import type {
   Category,
+  Coupon,
+  CreateCouponPayload,
+  CustomerOption,
   LoginResponse,
   Order,
   Product,
@@ -116,6 +119,34 @@ export async function cancelOrderRequest(id: string) {
   return data;
 }
 
+export async function fetchCoupons(): Promise<Coupon[]> {
+  const { data } = await apiClient.get<unknown>('/api/coupons');
+  return normalizeCouponArray(data);
+}
+
+export async function createCoupon(payload: CreateCouponPayload): Promise<Coupon> {
+  const { data } = await apiClient.post<unknown>('/api/coupons', payload);
+  return normalizeCoupon(data);
+}
+
+export async function updateCoupon(
+  id: string,
+  payload: Partial<CreateCouponPayload>,
+): Promise<Coupon> {
+  const { data } = await apiClient.patch<unknown>(`/api/coupons/${id}`, payload);
+  return normalizeCoupon(data);
+}
+
+export async function deleteCoupon(id: string): Promise<void> {
+  await apiClient.delete(`/api/coupons/${id}`);
+}
+
+export async function fetchAdminCustomers(search?: string): Promise<CustomerOption[]> {
+  const params = search ? { search } : undefined;
+  const { data } = await apiClient.get<unknown>('/api/users/admin/customers', { params });
+  return normalizeCustomerArray(data);
+}
+
 export async function uploadTempMedia(file: File) {
   const formData = new FormData();
   formData.append('file', file);
@@ -154,6 +185,86 @@ function normalizeProduct(payload: unknown): Product {
     }
   }
   return {} as Product;
+}
+
+function normalizeCouponArray(payload: unknown): Coupon[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const root = payload as Record<string, unknown>;
+
+  // Backend list shape: { status, data: { coupons: [...] } }
+  if (root.data && typeof root.data === 'object') {
+    const envelope = root.data as Record<string, unknown>;
+    if (Array.isArray(envelope.coupons)) {
+      return envelope.coupons as Coupon[];
+    }
+  }
+
+  if (Array.isArray(root.coupons)) {
+    return root.coupons as Coupon[];
+  }
+
+  return normalizeArray<Coupon>(payload, ['coupons']);
+}
+
+function normalizeCoupon(payload: unknown): Coupon {
+  if (!payload || typeof payload !== 'object') {
+    return {} as Coupon;
+  }
+
+  const root = payload as Record<string, unknown>;
+
+  // Backend write shape: { status, data: { coupon: {...} } }
+  if (root.data && typeof root.data === 'object') {
+    const envelope = root.data as Record<string, unknown>;
+    if (envelope.coupon && typeof envelope.coupon === 'object' && 'code' in envelope.coupon) {
+      return envelope.coupon as Coupon;
+    }
+    if ('code' in envelope) {
+      return envelope as unknown as Coupon;
+    }
+  }
+
+  if (root.coupon && typeof root.coupon === 'object' && 'code' in root.coupon) {
+    return root.coupon as Coupon;
+  }
+
+  if ('code' in root) {
+    return root as unknown as Coupon;
+  }
+
+  return {} as Coupon;
+}
+
+function normalizeCustomerArray(payload: unknown): CustomerOption[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const root = payload as Record<string, unknown>;
+
+  // Backend shape: { status, data: { customers: [...] } }
+  if (root.data && typeof root.data === 'object') {
+    const envelope = root.data as Record<string, unknown>;
+    if (Array.isArray(envelope.customers)) {
+      return envelope.customers as CustomerOption[];
+    }
+    if (Array.isArray(envelope.users)) {
+      return envelope.users as CustomerOption[];
+    }
+  }
+
+  if (Array.isArray(root.customers)) {
+    return root.customers as CustomerOption[];
+  }
+
+  if (Array.isArray(root.users)) {
+    return root.users as CustomerOption[];
+  }
+
+  return normalizeArray<CustomerOption>(payload, ['customers', 'users']);
 }
 
 function normalizeArray<T>(payload: unknown, keys: string[]): T[] {

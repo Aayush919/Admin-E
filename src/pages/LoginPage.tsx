@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { login } from '../api/endpoints';
+import { getApiErrorMessage } from '../lib/apiError';
+import { getDefaultSiteTag } from '../lib/storage';
 import { useAuth } from '../providers/AuthProvider';
 
 const schema = z.object({
@@ -22,7 +24,7 @@ export function LoginPage() {
   const auth = useAuth();
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '', siteTag: '' },
+    defaultValues: { email: '', password: '', siteTag: getDefaultSiteTag() },
   });
 
   const mutation = useMutation({
@@ -37,11 +39,7 @@ export function LoginPage() {
       navigate('/dashboard', { replace: true });
     },
     onError: (error: unknown) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Login failed';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, 'Login failed'));
     },
   });
 

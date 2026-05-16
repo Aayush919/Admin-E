@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { LayoutDashboard, LogOut, Package, Settings, Shapes, ShoppingCart, Star } from 'lucide-react';
+import { LayoutDashboard, LogOut, Package, Settings, Shapes, ShoppingCart, Star, Ticket } from 'lucide-react';
+import { resolveSiteTag } from '../../lib/storage';
 import { useAuth } from '../../providers/AuthProvider';
 import { cn } from '../../lib/utils';
 
@@ -10,6 +11,7 @@ const navItems = [
   { to: '/products/featured', label: 'Featured', icon: Star, end: true },
   { to: '/categories', label: 'Categories', icon: Shapes, end: true },
   { to: '/orders', label: 'Orders', icon: ShoppingCart, end: true },
+  { to: '/coupons', label: 'Coupons', icon: Ticket, end: true },
   { to: '/settings', label: 'Settings', icon: Settings, end: true },
 ];
 
@@ -62,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs text-blue-700">
-              Site Tag: {siteTag ?? 'n/a'}
+              Site Tag: {siteTag ?? resolveSiteTag()}
             </span>
             <button
               onClick={handleLogout}

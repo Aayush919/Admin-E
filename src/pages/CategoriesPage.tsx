@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Edit3, Plus, Trash2, Upload, X } from 'lucide-react';
+import { showApiError } from '../lib/apiError';
 import { toast } from 'sonner';
 import {
   createCategory,
@@ -404,10 +405,4 @@ function Modal({
       </div>
     </div>
   );
-}
-
-function showApiError(error: unknown) {
-  const message =
-    error instanceof Error ? error.message : 'Something went wrong';
-  toast.error(message);
 }

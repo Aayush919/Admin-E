@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { User } from '../types';
 import {
   clearSession,
+  getDefaultSiteTag,
   getSiteTag,
   getToken,
   getUser,
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       siteTag,
       user,
-      isAuthenticated: Boolean(token && siteTag),
+      isAuthenticated: Boolean(token && (siteTag ?? getDefaultSiteTag())),
       login: ({ token, siteTag, user }) => {
         setToken(token);
         setSiteTag(siteTag);
