@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { LayoutDashboard, LogOut, Package, Settings, Shapes, ShoppingCart, Star, Ticket } from 'lucide-react';
+import { Handshake, LayoutDashboard, LogOut, Package, Settings, Shapes, ShoppingCart, Star, Ticket } from 'lucide-react';
 import { resolveSiteTag } from '../../lib/storage';
 import { useAuth } from '../../providers/AuthProvider';
 import { cn } from '../../lib/utils';
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/categories', label: 'Categories', icon: Shapes, end: true },
   { to: '/orders', label: 'Orders', icon: ShoppingCart, end: true },
   { to: '/coupons', label: 'Coupons', icon: Ticket, end: true },
+  { to: '/affiliates', label: 'Affiliates', icon: Handshake, end: true },
   { to: '/settings', label: 'Settings', icon: Settings, end: true },
 ];
 

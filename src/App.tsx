@@ -8,6 +8,8 @@ import { ProductsPage } from './pages/admin/ProductsPage';
 import { FeaturedProductsPage } from './pages/admin/FeaturedProductsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { CouponsPage } from './pages/CouponsPage';
+import { AffiliatesPage } from './pages/admin/AffiliatesPage';
+import { AffiliateDashboardPage } from './pages/affiliate/AffiliateDashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 function ShellLayout() {
@@ -23,6 +25,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/affiliate/:code" element={<AffiliateDashboardPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<ShellLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -31,6 +34,7 @@ export default function App() {
           <Route path="/products/featured" element={<FeaturedProductsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/coupons" element={<CouponsPage />} />
+          <Route path="/affiliates" element={<AffiliatesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
