@@ -4,7 +4,7 @@ import { Handshake, LayoutDashboard, LogOut, Package, Settings, Shapes, Shopping
 import { resolveSiteTag } from '../../lib/storage';
 import { useAuth } from '../../providers/AuthProvider';
 import { cn } from '../../lib/utils';
-
+//add affiliate
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/products', label: 'Products', icon: Package, end: true },
